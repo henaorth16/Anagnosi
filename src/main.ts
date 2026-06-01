@@ -1,5 +1,6 @@
 import "./style.css";
 import mammoth from "mammoth";
+import { fileNameFromUrl, isExtensionContext, isFileUrl, isFirefox } from "./shared/browser";
 
 // App State Interface
 interface AppState {
@@ -198,6 +199,8 @@ appEl.innerHTML = `
           <p class="landing-subtitle">
             Upload your Word document (.docx) to view it inside a clean, distraction-free environment with customizable themes, typography controls, and full text search.
           </p>
+
+          <div id="local-file-notice" class="local-file-notice" style="display: none;" role="alert"></div>
           
           <div id="drop-zone" class="drop-zone">
             <div class="drop-zone-icon">
@@ -244,6 +247,7 @@ const dom = {
   landingView: document.getElementById("landing-view") as HTMLElement,
   loadingView: document.getElementById("loading-view") as HTMLElement,
   dropZone: document.getElementById("drop-zone") as HTMLElement,
+  localFileNotice: document.getElementById("local-file-notice") as HTMLElement,
   tocContainer: document.getElementById("toc-container") as HTMLElement,
   searchWidget: document.getElementById("search-widget") as HTMLElement,
   searchInput: document.getElementById("search-input") as HTMLInputElement,
@@ -487,8 +491,53 @@ function handleScroll() {
   }
 }
 
+function hideLocalFileNotice() {
+  dom.localFileNotice.style.display = "none";
+  dom.localFileNotice.innerHTML = "";
+  dom.dropZone.classList.remove("drop-zone--highlight");
+}
+
+type LocalFileFallbackReason = "firefox" | "chrome-denied" | "web";
+
+function showLocalFileFallback(options: {
+  fileName?: string;
+  reason: LocalFileFallbackReason;
+}) {
+  dom.loadingView.style.display = "none";
+  dom.documentPaper.style.display = "none";
+  dom.landingView.style.display = "flex";
+  dom.btnSearchToggle.disabled = true;
+  dom.btnExportHtml.disabled = true;
+  dom.documentTitleHeader.textContent = "No document open";
+
+  const label = options.fileName
+    ? `<strong>${escapeHtml(options.fileName)}</strong>`
+    : "your local .docx file";
+
+  const body =
+    options.reason === "firefox"
+      ? `<p>Firefox cannot open local files from disk automatically. Open ${label} using the drop zone below or the <strong>Open File</strong> button in the header.</p>`
+      : options.reason === "chrome-denied"
+        ? `<p>Could not read ${label} automatically. In Chrome, open <code>chrome://extensions</code>, open this extension&rsquo;s <strong>Details</strong>, and enable <strong>Allow access to file URLs</strong> — or use the drop zone below.</p>`
+        : `<p>Local files cannot be opened from a URL on the web. Open ${label} using the drop zone below or the <strong>Open File</strong> button in the header.</p>`;
+
+  dom.localFileNotice.innerHTML = `${body}<button type="button" class="btn btn-primary local-file-notice-btn" data-action="pick-file">Choose file&hellip;</button>`;
+  dom.localFileNotice.style.display = "block";
+  dom.dropZone.classList.add("drop-zone--highlight");
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 // Parse docx ArrayBuffer and load content
 async function loadDocx(arrayBuffer: ArrayBuffer, name: string, size: number) {
+  hideLocalFileNotice();
+
   // Show spinner
   dom.landingView.style.display = "none";
   dom.documentPaper.style.display = "none";
@@ -735,6 +784,13 @@ function closeSearch() {
 
 // Event Bindings
 function bindEvents() {
+  dom.localFileNotice.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-action='pick-file']")) {
+      dom.fileInput.click();
+    }
+  });
+
   // File input change
   dom.fileInput.addEventListener("change", async (e) => {
     const file = (e.target as HTMLInputElement).files?.[0];
@@ -856,27 +912,38 @@ function bindEvents() {
 // Auto-open file from URL query parameter if present
 async function loadFromQueryParam() {
   const params = new URLSearchParams(window.location.search);
+
+  // Firefox redirect from background (no file:// fetch attempted)
+  if (params.get("local") === "1") {
+    const nameParam = params.get("name");
+    showLocalFileFallback({
+      fileName: nameParam ? decodeURIComponent(nameParam) : undefined,
+      reason: "firefox",
+    });
+    return;
+  }
+
   const fileUrl = params.get("file");
   if (!fileUrl) return;
 
-  // Show loading spinner
+  const decodedUrl = decodeURIComponent(fileUrl);
+  const fileName = fileNameFromUrl(decodedUrl);
+
+  // Local files cannot be fetched from a normal web page; extension contexts differ by browser.
+  if (isFileUrl(decodedUrl)) {
+    if (!isExtensionContext()) {
+      showLocalFileFallback({ fileName, reason: "web" });
+      return;
+    }
+    if (isFirefox()) {
+      showLocalFileFallback({ fileName, reason: "firefox" });
+      return;
+    }
+  }
+
   dom.landingView.style.display = "none";
   dom.documentPaper.style.display = "none";
   dom.loadingView.style.display = "flex";
-
-  const decodedUrl = decodeURIComponent(fileUrl);
-  // Get filename from the URL path
-  let fileName = "document.docx";
-  try {
-    const urlObj = new URL(decodedUrl);
-    const pathParts = urlObj.pathname.split("/");
-    const lastPart = pathParts[pathParts.length - 1];
-    if (lastPart && lastPart.toLowerCase().endsWith(".docx")) {
-      fileName = decodeURIComponent(lastPart);
-    }
-  } catch (e) {
-    console.error("Failed to parse URL filename:", e);
-  }
 
   dom.statFileName.textContent = fileName;
   dom.documentTitleHeader.textContent = fileName;
@@ -890,28 +957,24 @@ async function loadFromQueryParam() {
     await loadDocx(buffer, fileName, buffer.byteLength);
   } catch (error) {
     console.error("Failed to fetch docx from URL:", error);
-    
-    // Check if it's a file:/// URL.
-    // In many browsers, accessing file:/// is blocked by security policies unless enabled.
-    if (decodedUrl.startsWith("file://")) {
-      alert(
-        "Could not load the local file automatically due to browser security restrictions.\n\n" +
-        "To allow automatic opening of local files:\n" +
-        "1. Open Extensions page (chrome://extensions or about:addons).\n" +
-        "2. Click details for 'Anágnosi – DocX Reader'.\n" +
-        "3. Enable 'Allow access to file URLs'.\n\n" +
-        "Alternatively, you can drag and drop the file directly into Anágnosi!"
-      );
+
+    if (isFileUrl(decodedUrl)) {
+      showLocalFileFallback({
+        fileName,
+        reason: isExtensionContext()
+          ? isFirefox()
+            ? "firefox"
+            : "chrome-denied"
+          : "web",
+      });
     } else {
       alert("Could not load the document from the URL: " + decodedUrl);
+      dom.loadingView.style.display = "none";
+      dom.landingView.style.display = "flex";
+      dom.btnSearchToggle.disabled = true;
+      dom.btnExportHtml.disabled = true;
+      dom.documentTitleHeader.textContent = "No document open";
     }
-    
-    // Revert to landing view
-    dom.loadingView.style.display = "none";
-    dom.landingView.style.display = "flex";
-    dom.btnSearchToggle.disabled = true;
-    dom.btnExportHtml.disabled = true;
-    dom.documentTitleHeader.textContent = "No document open";
   }
 }
 
@@ -921,7 +984,7 @@ function init() {
   bindEvents();
   
   const params = new URLSearchParams(window.location.search);
-  if (params.has("file")) {
+  if (params.has("file") || params.get("local") === "1") {
     loadFromQueryParam();
   } else {
     // Auto-open sample document on page load immediately, as requested!

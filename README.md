@@ -38,6 +38,15 @@ Make sure you have [Node.js](https://nodejs.org/) installed.
 
    Build a single target with `npm run build:chrome` or `npm run build:firefox`.
 
+### Web app (Vercel)
+Deploy only the web reader — not the browser extension bundles:
+
+```bash
+npm run build:web
+```
+
+This outputs a standard Vite SPA to **`dist/`**. Vercel uses `vercel.json` to run this command automatically and serve `index.html` for client-side routes.
+
 ---
 
 ## 📥 How to Install & Load the Extension
@@ -67,8 +76,8 @@ To let Anágnosi capture local `.docx` files when you drag them into Chrome or d
 4. Open the **`dist/firefox/`** folder of this project and select the **`manifest.json`** file.
 5. anagnosi will load immediately! You can access it by clicking the extension icon in the toolbar.
 
-#### 📂 Allowing Local `.docx` File Sniffing
-For Firefox, open local `.docx` files by dragging them directly onto anagnosi's reader tab or verify extension file permissions under the details menu in `about:addons`.
+#### 📂 Opening Local `.docx` Files
+Firefox does not offer Chrome’s “Allow access to file URLs” option. When you open a local `.docx` from the filesystem, Anágnosi redirects to the reader and prompts you to **drag and drop** the file or use **Open File** / **Choose file…** on the landing screen.
 
 ---
 

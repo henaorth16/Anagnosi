@@ -3,6 +3,8 @@ import { crx } from '@crxjs/vite-plugin'
 import { resolve } from 'path'
 import fs from 'fs'
 
+const buildTarget = process.env.BUILD_TARGET ?? 'extension'
+const isWebBuild = buildTarget === 'web'
 const browser = (process.env.BROWSER ?? 'chrome') as 'chrome' | 'firefox'
 const isFirefox = browser === 'firefox'
 
@@ -13,7 +15,9 @@ const manifestPath = resolve(
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
 
 export default defineConfig({
-  plugins: [crx({ manifest })],
+  // Root-relative paths so assets resolve on Vercel (and any static host).
+  base: '/',
+  plugins: isWebBuild ? [] : [crx({ manifest })],
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
@@ -21,13 +25,17 @@ export default defineConfig({
     },
   },
   build: {
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html'),
-      },
-    },
-    outDir: isFirefox ? 'dist/firefox' : 'dist/chrome',
+    // Web: standard Vite SPA → dist/ (deployed to Vercel).
+    // Extension: CRX bundles → dist/chrome or dist/firefox.
+    outDir: isWebBuild ? 'dist' : isFirefox ? 'dist/firefox' : 'dist/chrome',
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
+    rollupOptions: isWebBuild
+      ? undefined
+      : {
+          input: {
+            main: resolve(__dirname, 'index.html'),
+          },
+        },
   },
 })

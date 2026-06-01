@@ -583,6 +583,37 @@ body {
   line-height: 1.5;
 }
 
+.local-file-notice {
+  width: 100%;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+  text-align: left;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent-color);
+  background: var(--accent-light);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.local-file-notice p {
+  margin: 0 0 0.75rem;
+}
+
+.local-file-notice code {
+  font-size: 0.85em;
+}
+
+.local-file-notice-btn {
+  width: 100%;
+}
+
+.drop-zone.drop-zone--highlight {
+  border-color: var(--accent-color);
+  background: var(--accent-light);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 25%, transparent);
+}
+
 .drop-zone {
   width: 100%;
   border: 2px dashed var(--border-color);

@@ -8,6 +8,7 @@
     "dev:chrome": "BROWSER=chrome vite",
     "dev:firefox": "BROWSER=firefox vite",
     "build": "npm run build:chrome && npm run build:firefox",
+    "build:web": "tsc && BUILD_TARGET=web vite build",
     "build:chrome": "tsc && BROWSER=chrome vite build",
     "build:firefox": "tsc && BROWSER=firefox vite build",
     "preview": "vite preview"
