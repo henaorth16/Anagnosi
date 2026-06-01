@@ -32,7 +32,11 @@ Make sure you have [Node.js](https://nodejs.org/) installed.
    ```bash
    npm run build
    ```
-   *This compiles all source assets into a Manifest V3 compliant bundle located in the **`dist/`** directory.*
+   *This produces two browser-specific bundles:*
+   - **`dist/chrome/`** — Chrome / Chromium (MV3 `service_worker` background)
+   - **`dist/firefox/`** — Firefox (MV3 `scripts` background)
+
+   Build a single target with `npm run build:chrome` or `npm run build:firefox`.
 
 ---
 
@@ -43,7 +47,7 @@ Make sure you have [Node.js](https://nodejs.org/) installed.
 2. Navigate to the extensions manager by typing **`chrome://extensions/`** in the URL bar.
 3. Turn on the **Developer mode** toggle in the top-right corner.
 4. Click the **Load unpacked** button in the top-left corner.
-5. Select the **`dist/`** folder inside this project's root directory.
+5. Select the **`dist/chrome/`** folder inside this project's root directory.
 6. The extension is now loaded! Pin **Anágnosi** to your extension bar and click it to open the reader.
 
 #### 📂 Allowing Local `.docx` File Sniffing
@@ -56,16 +60,15 @@ To let Anágnosi capture local `.docx` files when you drag them into Chrome or d
 ---
 
 ### 🦊 Mozilla Firefox
-Firefox fully supports Anágnosi using a dual background script/worker design.
 
 1. Open Firefox.
 2. In the URL bar, go to **`about:debugging#/runtime/this-firefox`**.
 3. Click the **Load Temporary Add-on...** button.
-4. Open the **`dist/`** folder of this project and select the **`manifest.json`** file.
-5. Scribe will load immediately! You can access it by clicking the extension icon in the toolbar.
+4. Open the **`dist/firefox/`** folder of this project and select the **`manifest.json`** file.
+5. anagnosi will load immediately! You can access it by clicking the extension icon in the toolbar.
 
 #### 📂 Allowing Local `.docx` File Sniffing
-For Firefox, open local `.docx` files by dragging them directly onto Scribe's reader tab or verify extension file permissions under the details menu in `about:addons`.
+For Firefox, open local `.docx` files by dragging them directly onto anagnosi's reader tab or verify extension file permissions under the details menu in `about:addons`.
 
 ---
 
@@ -74,7 +77,7 @@ To run the project locally with hot reloading (HMR) for fast UI testing:
 ```bash
 npm run dev
 ```
-Vite and CRXJS will watch your files and compile them live into the `dist/` directory.
+Vite and CRXJS will watch your files and compile them live. Use `npm run dev:chrome` or `npm run dev:firefox` for a browser-specific dev build (`dist/chrome/` or `dist/firefox/`).
 
 ---
 

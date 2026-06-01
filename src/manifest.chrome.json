@@ -28,7 +28,6 @@
   },
   "background": {
     "service_worker": "src/background/background.ts",
-    "scripts": ["src/background/background.ts"],
     "type": "module"
   },
   "options_ui": {
