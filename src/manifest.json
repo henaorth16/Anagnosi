@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Anagnosi – DocX Reader",
+  "version": "1.0.0",
+  "description": "Open and read Microsoft Word (.docx) files directly in your browser with beautiful themes, typography controls, and full-text search.",
+  "permissions": [
+    "tabs",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "*://*/*.docx",
+    "file://*/*.docx"
+  ],
+  "action": {
+    "default_title": "Open Anagnosi DocX Reader",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "32":  "icons/icon32.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16":  "icons/icon16.png",
+    "32":  "icons/icon32.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "src/background/background.ts",
+    "scripts": ["src/background/background.ts"],
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "index.html",
+    "open_in_tab": true
+  }
+}
