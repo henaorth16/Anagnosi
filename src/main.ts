@@ -1,6 +1,7 @@
 import "./style.css";
 import mammoth from "mammoth";
 import { fileNameFromUrl, isExtensionContext, isFileUrl, isFirefox } from "./shared/browser";
+import { inject } from '@vercel/analytics';
 
 // App State Interface
 interface AppState {
@@ -994,3 +995,4 @@ function init() {
 
 // Run app
 init();
+inject();
