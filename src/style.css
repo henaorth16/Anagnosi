@@ -661,12 +661,15 @@ body {
   background: var(--bg-canvas);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 4rem 5rem;
+  padding: 4rem min(10%, 5rem);
   box-shadow: var(--shadow-lg);
   transition: max-width var(--transition-normal), background-color var(--transition-normal), border-color var(--transition-normal);
   width: 100%;
   min-height: calc(100vh - 12rem);
   animation: slideUp var(--transition-slow);
+  box-sizing: border-box;
+  overflow: hidden;
+  overflow-y: auto;
 }
 
 /* Width options */
@@ -677,7 +680,7 @@ body {
 /* Mobile viewport adjustments for document paper */
 @media (max-width: 768px) {
   .document-paper {
-    padding: 2rem 1.5rem;
+    padding: 2rem min(5%, 1.5rem);
     border-radius: var(--radius-md);
   }
   .app-sidebar {
@@ -799,6 +802,9 @@ body {
   color: var(--text-primary);
   line-height: var(--line-height, 1.6);
   font-size: var(--font-size, 17px);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .document-content.font-sans { font-family: var(--font-sans); }
@@ -860,12 +866,13 @@ body {
 /* Tables styling */
 .document-content table {
   width: 100%;
+  display: block;
+  overflow-x: auto;
   border-collapse: collapse;
   margin: 2rem 0;
   font-size: 0.9em;
   box-shadow: var(--shadow-sm);
   border-radius: var(--radius-md);
-  overflow: hidden;
 }
 
 .document-content th,
@@ -917,6 +924,16 @@ body.theme-oled .document-content tr:nth-child(even) {
   margin: 1.5rem 0;
   font-style: italic;
   color: var(--text-secondary);
+}
+
+/* Code & Preformatted elements styling to prevent overflows */
+.document-content pre,
+.document-content code {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* Animations */
