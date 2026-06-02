@@ -65,7 +65,6 @@ appEl.innerHTML = `
         <span class="logo-text">Anágnosi</span>
         <span class="logo-badge">Web</span>
       </div>
-      
       <div id="document-title-header" class="file-info-name" style="max-width: 40%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-weight: 500;">
         No document open
       </div>
@@ -73,9 +72,6 @@ appEl.innerHTML = `
       <div class="header-actions">
         <button id="btn-search-toggle" class="btn btn-icon" title="Search inside document" disabled>
           ${icons.search}
-        </button>
-        <button id="btn-sidebar-toggle" class="btn btn-icon" title="Toggle Sidebar">
-          ${icons.sidebar}
         </button>
         <label class="btn btn-primary" for="docx-upload">
           ${icons.upload}
@@ -190,10 +186,13 @@ appEl.innerHTML = `
             </div>
           </div>
         </div>
-      </aside>
-      
-      <!-- Canvas / Reading Space -->
-      <main id="app-canvas" class="app-canvas">
+        <button id="btn-sidebar-toggle" class="btn btn-icon btn-sidebar-toggle-chatgpt" title="Toggle Sidebar">
+            ${icons.sidebar}
+        </button>
+        </aside>
+        <!-- Canvas / Reading Space -->
+        <main id="app-canvas" class="app-canvas">
+        
         <!-- Landing / Empty Screen -->
         <div id="landing-view" class="landing-view">
           <h1 class="landing-title">Modern DocX Reader</h1>
@@ -256,18 +255,18 @@ const dom = {
   searchNext: document.getElementById("search-next") as HTMLButtonElement,
   searchPrev: document.getElementById("search-prev") as HTMLButtonElement,
   searchClose: document.getElementById("search-close") as HTMLButtonElement,
-  
+
   // Settings Controls
   sliderFontsize: document.getElementById("slider-fontsize") as HTMLInputElement,
   labelFontsize: document.getElementById("label-fontsize") as HTMLElement,
-  
+
   // Buttons
   btnSidebarToggle: document.getElementById("btn-sidebar-toggle") as HTMLButtonElement,
   btnSearchToggle: document.getElementById("btn-search-toggle") as HTMLButtonElement,
   btnLoadSample: document.getElementById("btn-load-sample") as HTMLButtonElement,
   btnExportHtml: document.getElementById("btn-export-html") as HTMLButtonElement,
   fileInput: document.getElementById("docx-upload") as HTMLInputElement,
-  
+
   // Stats
   statFileName: document.getElementById("stat-filename") as HTMLElement,
   statFileSize: document.getElementById("stat-filesize") as HTMLElement,
@@ -280,14 +279,14 @@ const dom = {
 function setTheme(theme: AppState["theme"]) {
   state.theme = theme;
   localStorage.setItem("anagnosi-theme", theme);
-  
+
   // Remove existing themes from body and add active one
   dom.body.className = dom.body.className
     .split(" ")
     .filter(c => !c.startsWith("theme-"))
     .join(" ");
   dom.body.classList.add(`theme-${theme}`);
-  
+
   // Update active state in grid buttons
   document.querySelectorAll(".theme-option").forEach(opt => {
     opt.classList.toggle("active", opt.getAttribute("data-theme") === theme);
@@ -298,14 +297,14 @@ function setTheme(theme: AppState["theme"]) {
 function setFontFamily(font: AppState["fontFamily"]) {
   state.fontFamily = font;
   localStorage.setItem("anagnosi-font-family", font);
-  
+
   // Remove font classes from content
   dom.documentContent.className = dom.documentContent.className
     .split(" ")
     .filter(c => !c.startsWith("font-"))
     .join(" ");
   dom.documentContent.classList.add(font);
-  
+
   // Update active class in layout selector buttons
   document.querySelectorAll("[data-font]").forEach(btn => {
     btn.classList.toggle("active", btn.getAttribute("data-font") === font);
@@ -316,13 +315,13 @@ function setFontFamily(font: AppState["fontFamily"]) {
 function setPageWidth(width: AppState["pageWidth"]) {
   state.pageWidth = width;
   localStorage.setItem("anagnosi-page-width", width);
-  
+
   dom.documentPaper.className = dom.documentPaper.className
     .split(" ")
     .filter(c => !c.startsWith("width-"))
     .join(" ");
   dom.documentPaper.classList.add(width);
-  
+
   document.querySelectorAll("[data-width]").forEach(btn => {
     btn.classList.toggle("active", btn.getAttribute("data-width") === width);
   });
@@ -333,7 +332,7 @@ function setLineHeight(height: number) {
   state.lineHeight = height;
   localStorage.setItem("anagnosi-line-height", height.toString());
   dom.documentContent.style.setProperty("--line-height", height.toString());
-  
+
   document.querySelectorAll("[data-spacing]").forEach(btn => {
     const val = parseFloat(btn.getAttribute("data-spacing") || "1.6");
     btn.classList.toggle("active", Math.abs(val - height) < 0.05);
@@ -356,7 +355,7 @@ function initSettingsUI() {
   setPageWidth(state.pageWidth);
   setLineHeight(state.lineHeight);
   setFontSize(state.fontSize);
-  
+
   // Update initial active tab UI
   updateTabUI();
 }
@@ -366,7 +365,7 @@ function updateTabUI() {
   const activeTab = state.activeTab;
   document.getElementById("tab-outline")!.classList.toggle("active", activeTab === "outline");
   document.getElementById("tab-settings")!.classList.toggle("active", activeTab === "settings");
-  
+
   document.getElementById("tab-content-outline")!.style.display = activeTab === "outline" ? "flex" : "none";
   document.getElementById("tab-content-settings")!.style.display = activeTab === "settings" ? "flex" : "none";
 }
@@ -387,7 +386,7 @@ function calculateStats() {
   const words = text.trim().split(/\s+/).filter(w => w.length > 0);
   state.wordCount = words.length;
   state.readingTime = Math.max(1, Math.ceil(words.length / 225)); // 225 wpm read speed
-  
+
   dom.statWords.textContent = state.wordCount.toLocaleString();
   dom.statReadTime.textContent = `${state.readingTime} min`;
 }
@@ -395,43 +394,43 @@ function calculateStats() {
 // Generate Outline TOC
 function generateOutline() {
   const headings = dom.documentContent.querySelectorAll("h1, h2, h3, h4");
-  
+
   if (headings.length === 0) {
     dom.tocContainer.innerHTML = `<div class="toc-empty">No headings found in this document.</div>`;
     return;
   }
-  
+
   const tocList = document.createElement("ul");
   tocList.className = "toc-list";
-  
+
   headings.forEach((heading, index) => {
     const el = heading as HTMLElement;
     // Set a unique ID for anchor links if not present
     if (!el.id) {
       el.id = `h-anchor-${index}`;
     }
-    
+
     const tagName = el.tagName.toLowerCase();
     const item = document.createElement("li");
     const link = document.createElement("a");
     link.className = `toc-item toc-item-${tagName}`;
     link.textContent = el.textContent || `Section ${index + 1}`;
     link.setAttribute("data-target", el.id);
-    
+
     link.addEventListener("click", (e) => {
       e.preventDefault();
       // Scroll to heading smoothly
       el.scrollIntoView({ behavior: "smooth", block: "start" });
-      
+
       // Update active class on click
       document.querySelectorAll(".toc-item").forEach(l => l.classList.remove("active"));
       link.classList.add("active");
     });
-    
+
     item.appendChild(link);
     tocList.appendChild(item);
   });
-  
+
   dom.tocContainer.innerHTML = "";
   dom.tocContainer.appendChild(tocList);
 }
@@ -441,25 +440,25 @@ function handleScroll() {
   const scrollElement = dom.canvas;
   const scrollTop = scrollElement.scrollTop;
   const scrollHeight = scrollElement.scrollHeight - scrollElement.clientHeight;
-  
+
   if (scrollHeight > 0) {
     const percentage = (scrollTop / scrollHeight) * 100;
     dom.scrollProgress.style.width = `${percentage}%`;
   } else {
     dom.scrollProgress.style.width = "0%";
   }
-  
+
   // Outline active tracking
   const headings = dom.documentContent.querySelectorAll("h1, h2, h3");
   if (headings.length === 0) return;
-  
+
   let activeId = "";
   const canvasTop = dom.canvas.getBoundingClientRect().top;
-  
+
   for (let i = 0; i < headings.length; i++) {
     const heading = headings[i] as HTMLElement;
     const rect = heading.getBoundingClientRect();
-    
+
     // Check if the heading has crossed a threshold near top of screen
     if (rect.top - canvasTop <= 110) {
       activeId = heading.id;
@@ -467,16 +466,16 @@ function handleScroll() {
       break;
     }
   }
-  
+
   if (!activeId && headings.length > 0) {
     activeId = headings[0].id;
   }
-  
+
   if (activeId) {
     document.querySelectorAll(".toc-item").forEach(item => {
       const isTarget = item.getAttribute("data-target") === activeId;
       item.classList.toggle("active", isTarget);
-      
+
       // If setting active, scroll the TOC list so it stays visible
       if (isTarget) {
         const tocList = document.querySelector(".toc-list");
@@ -543,39 +542,39 @@ async function loadDocx(arrayBuffer: ArrayBuffer, name: string, size: number) {
   dom.landingView.style.display = "none";
   dom.documentPaper.style.display = "none";
   dom.loadingView.style.display = "flex";
-  
+
   // Update stats state
   state.fileName = name;
   state.fileSize = formatBytes(size);
   dom.statFileName.textContent = name;
   dom.statFileSize.textContent = state.fileSize;
   dom.documentTitleHeader.textContent = name;
-  
+
   try {
     const result = await mammoth.convertToHtml({ arrayBuffer });
-    
+
     // Inject HTML into paper
     dom.documentContent.innerHTML = result.value;
-    
+
     // Process content (statistics, outline, styles)
     calculateStats();
     generateOutline();
-    
+
     // Show document paper
     dom.loadingView.style.display = "none";
     dom.documentPaper.style.display = "block";
     dom.btnSearchToggle.disabled = false;
     dom.btnExportHtml.disabled = false;
-    
+
     // Reset search
     closeSearch();
-    
+
     // Scroll to top
     dom.canvas.scrollTop = 0;
   } catch (error) {
     console.error("Failed to parse docx:", error);
     alert("Could not load the Word document. Please ensure it is a valid, uncorrupted .docx file.");
-    
+
     // Revert to landing
     dom.loadingView.style.display = "none";
     dom.landingView.style.display = "flex";
@@ -589,7 +588,7 @@ async function loadDocx(arrayBuffer: ArrayBuffer, name: string, size: number) {
 async function loadSampleDoc() {
   dom.landingView.style.display = "none";
   dom.loadingView.style.display = "flex";
-  
+
   try {
     const response = await fetch("/sample.docx");
     if (!response.ok) {
@@ -611,7 +610,7 @@ function createMockDocxArrayBuffer(): ArrayBuffer {
   // A tiny valid blank zip / docx content or mock array buffer.
   // Actually, we can generate a simple valid base64 docx file and convert to buffer.
   // Below is a valid minimal base64 encoded docx file containing text "Anagnosi Document Reader Guide"
-  const base64Docx = 
+  const base64Docx =
     "UEsDBBQAAAAIAKV6a1YAAAAAAAAAAAAAAAAHAAAAX3JlbHMvLmVsZW1lbnRzWk9DSwNBEPyvEHvO" +
     "7M5mFfFQEEQ8iBfEy2o2m0WzO7tG/Hu3h4IevHz9qqv6qrsDhz3nK1adBbe2g0vGq2s7bFfXH96B" +
     "YwYF/wz2yLw9B3t6tFhF0FhE2qjM24tY29jZ04sVfIu1+22/2VwO3h6zCLaePexQxMB28PZs+Z8M" +
@@ -621,7 +620,7 @@ function createMockDocxArrayBuffer(): ArrayBuffer {
     "YRiGYRiGYRiGYRiGYRiGYRiGYRiGYRiGYRiG+Yj5n/+Pwf4GUEsBAhQAFAAAAAgApXprVgAAAAAA" +
     "AAAAAAAAAAcAAAAAAAAAAAAQAAAAAAAAAF9yZWxzLy5lbGVtZW50c1BLBQYAAAAAAQABADUAAAA8" +
     "AAAAAA==";
-    
+
   // Since mammoth needs a proper docx XML zip structure, let's create a dynamic fallback
   // using Mammoth directly if possible, or just download a valid small file.
   // We downloaded sample.docx earlier using curl, which is perfect. If curl failed,
@@ -663,7 +662,7 @@ function initDragAndDrop() {
       alert("Please drop a valid Microsoft Word (.docx) file.");
     }
   });
-  
+
   dom.dropZone.addEventListener("click", () => {
     dom.fileInput.click();
   });
@@ -672,13 +671,13 @@ function initDragAndDrop() {
 // Text Search functions
 function highlightSearch(container: HTMLElement, searchTerm: string): number {
   removeHighlights(container);
-  
+
   if (!searchTerm || searchTerm.trim() === "") return 0;
-  
+
   let count = 0;
   const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(`(${escaped})`, "gi");
-  
+
   function walk(node: Node) {
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.nodeValue || "";
@@ -687,7 +686,7 @@ function highlightSearch(container: HTMLElement, searchTerm: string): number {
         if (parent && parent.nodeName !== "SCRIPT" && parent.nodeName !== "STYLE") {
           const fragment = document.createDocumentFragment();
           const parts = text.split(regex);
-          
+
           parts.forEach(part => {
             if (regex.test(part)) {
               const span = document.createElement("span");
@@ -699,7 +698,7 @@ function highlightSearch(container: HTMLElement, searchTerm: string): number {
               fragment.appendChild(document.createTextNode(part));
             }
           });
-          
+
           parent.replaceChild(fragment, node);
         }
       }
@@ -708,7 +707,7 @@ function highlightSearch(container: HTMLElement, searchTerm: string): number {
       children.forEach(walk);
     }
   }
-  
+
   walk(container);
   return count;
 }
@@ -727,9 +726,9 @@ function removeHighlights(container: HTMLElement) {
 function triggerSearch() {
   const query = dom.searchInput.value;
   const contentEl = dom.documentContent;
-  
+
   const count = highlightSearch(contentEl, query);
-  
+
   if (count > 0) {
     currentSearchIndex = 0;
     searchMatches = Array.from(contentEl.querySelectorAll(".match-highlight")) as HTMLElement[];
@@ -745,15 +744,15 @@ function triggerSearch() {
 
 function navigateSearch(direction: "next" | "prev") {
   if (searchMatches.length === 0) return;
-  
+
   searchMatches[currentSearchIndex].classList.remove("active");
-  
+
   if (direction === "next") {
     currentSearchIndex = (currentSearchIndex + 1) % searchMatches.length;
   } else {
     currentSearchIndex = (currentSearchIndex - 1 + searchMatches.length) % searchMatches.length;
   }
-  
+
   const activeMatch = searchMatches[currentSearchIndex];
   activeMatch.classList.add("active");
   activeMatch.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -762,7 +761,7 @@ function navigateSearch(direction: "next" | "prev") {
 
 function toggleSearchWidget() {
   if (dom.btnSearchToggle.disabled) return;
-  
+
   const isActive = dom.searchWidget.classList.toggle("active");
   if (isActive) {
     dom.searchInput.focus();
@@ -800,31 +799,31 @@ function bindEvents() {
       loadDocx(buffer, file.name, file.size);
     }
   });
-  
+
   // Drag and Drop
   initDragAndDrop();
-  
+
   // Load Sample Button click
   dom.btnLoadSample.addEventListener("click", loadSampleDoc);
-  
+
   // Sidebar toggle button
   dom.btnSidebarToggle.addEventListener("click", () => {
     state.sidebarOpen = !state.sidebarOpen;
     localStorage.setItem("anagnosi-sidebar-open", state.sidebarOpen.toString());
     dom.sidebar.classList.toggle("collapsed", !state.sidebarOpen);
   });
-  
+
   // Sidebar Tab Switching
   document.getElementById("tab-outline")!.addEventListener("click", () => {
     state.activeTab = "outline";
     updateTabUI();
   });
-  
+
   document.getElementById("tab-settings")!.addEventListener("click", () => {
     state.activeTab = "settings";
     updateTabUI();
   });
-  
+
   // Theme selection change
   document.querySelectorAll(".theme-option").forEach(opt => {
     opt.addEventListener("click", () => {
@@ -832,7 +831,7 @@ function bindEvents() {
       if (t) setTheme(t);
     });
   });
-  
+
   // Font Family selectors
   document.querySelectorAll("[data-font]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -840,7 +839,7 @@ function bindEvents() {
       if (f) setFontFamily(f);
     });
   });
-  
+
   // Page Width selectors
   document.querySelectorAll("[data-width]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -848,7 +847,7 @@ function bindEvents() {
       if (w) setPageWidth(w);
     });
   });
-  
+
   // Line Spacing selectors
   document.querySelectorAll("[data-spacing]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -856,13 +855,13 @@ function bindEvents() {
       setLineHeight(s);
     });
   });
-  
+
   // Font Size slider change
   dom.sliderFontsize.addEventListener("input", () => {
     const size = parseInt(dom.sliderFontsize.value);
     setFontSize(size);
   });
-  
+
   // Search actions
   dom.btnSearchToggle.addEventListener("click", toggleSearchWidget);
   dom.searchInput.addEventListener("input", triggerSearch);
@@ -874,11 +873,11 @@ function bindEvents() {
       closeSearch();
     }
   });
-  
+
   dom.searchNext.addEventListener("click", () => navigateSearch("next"));
   dom.searchPrev.addEventListener("click", () => navigateSearch("prev"));
   dom.searchClose.addEventListener("click", closeSearch);
-  
+
   // Global Shortcut for search (Ctrl+F or Cmd+F)
   window.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "f") {
@@ -886,18 +885,18 @@ function bindEvents() {
       toggleSearchWidget();
     }
   });
-  
+
   // Scroll tracking on canvas
   dom.canvas.addEventListener("scroll", handleScroll);
-  
+
   // Export parsed HTML
   dom.btnExportHtml.addEventListener("click", () => {
     if (dom.btnExportHtml.disabled) return;
-    
+
     // Clean highlights if any before export
     const cleanContent = dom.documentContent.cloneNode(true) as HTMLElement;
     removeHighlights(cleanContent);
-    
+
     const blob = new Blob([cleanContent.innerHTML], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -983,7 +982,7 @@ async function loadFromQueryParam() {
 function init() {
   initSettingsUI();
   bindEvents();
-  
+
   const params = new URLSearchParams(window.location.search);
   if (params.has("file") || params.get("local") === "1") {
     loadFromQueryParam();
