@@ -1,56 +1,68 @@
-import browser from 'webextension-polyfill'
-import { fileNameFromUrl, isFirefox } from '../shared/browser'
+import browser from "webextension-polyfill";
+import { fileNameFromUrl, isFirefox } from "../shared/browser";
+import { isSupportedUrl, detectFormat } from "../shared/fileTypes";
 
-const READER_PAGE = 'index.html'
+const READER_PAGE = "index.html";
 
 /**
  * When the user clicks the extension toolbar icon, open the Anagnosi reader in a
  * dedicated tab (or focus an already-open one).
  */
 browser.action.onClicked.addListener(async () => {
-  const readerUrl = browser.runtime.getURL(READER_PAGE)
+  const readerUrl = browser.runtime.getURL(READER_PAGE);
 
-  // Reuse an existing Anagnosi tab if one is already open
-  const existing = await browser.tabs.query({ url: readerUrl })
+  const existing = await browser.tabs.query({ url: readerUrl });
 
   if (existing.length > 0 && existing[0].id !== undefined) {
-    await browser.tabs.update(existing[0].id, { active: true })
+    await browser.tabs.update(existing[0].id, { active: true });
     if (existing[0].windowId !== undefined) {
-      await browser.windows.update(existing[0].windowId, { focused: true })
+      await browser.windows.update(existing[0].windowId, { focused: true });
     }
   } else {
-    await browser.tabs.create({ url: readerUrl })
+    await browser.tabs.create({ url: readerUrl });
   }
-})
+});
 
-function readerUrlForDocxNavigation(docxUrl: string, readerUrl: string): string {
-  // Firefox cannot fetch file:// URLs from extension pages; open the reader with
-  // a local-file prompt instead of embedding the full path in ?file=.
-  if (isFirefox() && docxUrl.startsWith('file://')) {
-    const name = fileNameFromUrl(docxUrl)
-    return `${readerUrl}?local=1&name=${encodeURIComponent(name)}`
+/**
+ * Build the reader URL for a given document URL.
+ *
+ * Firefox cannot fetch file:// URLs from extension pages, so for local files
+ * we redirect with ?local=1&name=<filename>&fmt=<format> and let the UI show
+ * a "please pick the file" prompt instead.
+ */
+function readerUrlForDocument(docUrl: string, readerUrl: string): string {
+  const format = detectFormat(docUrl.split("?")[0]) ?? "docx";
+
+  if (isFirefox() && docUrl.startsWith("file://")) {
+    const name = fileNameFromUrl(docUrl);
+    return (
+      `${readerUrl}?local=1` +
+      `&name=${encodeURIComponent(name)}` +
+      `&fmt=${format}`
+    );
   }
 
-  return `${readerUrl}?file=${encodeURIComponent(docxUrl)}`
+  return `${readerUrl}?file=${encodeURIComponent(docUrl)}` + `&fmt=${format}`;
 }
 
 /**
- * Intercept navigation to any .docx file (local file:// or web http/https URL)
- * and redirect to Anagnosi DocX Reader.
+ * Intercept navigation to any supported document file (local file:// or
+ * web http/https) and redirect to the Anagnosi reader.
+ *
+ * Supported: .docx  .xlsx  .pptx  .rtf
  */
 browser.webNavigation.onBeforeNavigate.addListener(async (details) => {
-  // Only intercept main frame navigations (ignoring sub-frames, iframes)
-  if (details.frameId !== 0) return
+  // Only intercept main-frame navigations
+  if (details.frameId !== 0) return;
 
-  const url = details.url
-  if (url && (url.toLowerCase().endsWith('.docx') || url.toLowerCase().includes('.docx?'))) {
-    const readerUrl = browser.runtime.getURL(READER_PAGE)
+  const url = details.url;
+  if (!url || !isSupportedUrl(url)) return;
 
-    // Prevent infinite loop if navigating inside Anagnosi reader itself
-    if (url.startsWith(readerUrl)) return
+  const readerUrl = browser.runtime.getURL(READER_PAGE);
 
-    const targetUrl = readerUrlForDocxNavigation(url, readerUrl)
+  // Prevent infinite loop if the reader itself matches somehow
+  if (url.startsWith(readerUrl)) return;
 
-    await browser.tabs.update(details.tabId, { url: targetUrl })
-  }
-})
+  const targetUrl = readerUrlForDocument(url, readerUrl);
+  await browser.tabs.update(details.tabId, { url: targetUrl });
+});

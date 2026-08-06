@@ -1,145 +1,114 @@
 import "./style.css";
-import mammoth from "mammoth";
-import { fileNameFromUrl, isExtensionContext, isFileUrl, isFirefox } from "./shared/browser";
-import { inject } from '@vercel/analytics';
+import { FILE_INPUT_ACCEPT } from "./shared/fileTypes";
+import { inject } from "@vercel/analytics";
+import { state } from "./lib/state";
+import { buildDom } from "./lib/dom";
+import {
+  initSettingsUI,
+  bindEvents,
+  showLanding,
+  loadFromQueryParam,
+} from "./lib/services";
 
-// App State Interface
-interface AppState {
-  theme: "light" | "sepia" | "dark" | "oled";
-  fontFamily: "font-sans" | "font-serif" | "font-mono";
-  fontSize: number;
-  lineHeight: number;
-  pageWidth: "width-narrow" | "width-standard" | "width-wide";
-  sidebarOpen: boolean;
-  activeTab: "outline" | "settings";
-  fileName: string;
-  fileSize: string;
-  wordCount: number;
-  readingTime: number;
-}
+// ─── App State, DOM Cache, and all services are in src/lib/
+// Icons and the HTML layout template remain here as static UI data.
 
-// Load initial state from localStorage or use defaults
-const state: AppState = {
-  theme: (localStorage.getItem("anagnosi-theme") as any) || "light",
-  fontFamily: (localStorage.getItem("anagnosi-font-family") as any) || "font-serif",
-  fontSize: parseInt(localStorage.getItem("anagnosi-font-size") || "18"),
-  lineHeight: parseFloat(localStorage.getItem("anagnosi-line-height") || "1.6"),
-  pageWidth: (localStorage.getItem("anagnosi-page-width") as any) || "width-standard",
-  sidebarOpen: localStorage.getItem("anagnosi-sidebar-open") !== "false",
-  activeTab: "outline",
-  fileName: "",
-  fileSize: "",
-  wordCount: 0,
-  readingTime: 0,
-};
+// ─── Icons ───────────────────────────────────────────────────────────────────
 
-// Search State
-let searchMatches: HTMLElement[] = [];
-let currentSearchIndex = -1;
-
-// Icons dictionary (Inline SVGs)
 const icons = {
-  logo: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+  logo: `<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<rect width="48" height="48" fill="url(#pattern0_1_3)"/>
+<defs>
+<pattern id="pattern0_1_3" patternContentUnits="objectBoundingBox" width="1" height="1">
+<use xlink:href="#image0_1_3" transform="translate(-0.00111359) scale(0.00222717)"/>
+</pattern>
+<image id="image0_1_3" width="450" height="449" preserveAspectRatio="none" xlink:href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4QBoRXhpZgAASUkqAAgAAAADABIBAwABAAAAAQAAADEBAgAQAAAAMgAAAGmHBAABAAAAQgAAAAAAAABTaG90d2VsbCAwLjMyLjYAAgACoAkAAQAAAMIBAAADoAkAAQAAAMEBAAAAAAAA/+EJ9Gh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8APD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNC40LjAtRXhpdjIiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczpleGlmPSJodHRwOi8vbnMuYWRvYmUuY29tL2V4aWYvMS4wLyIgeG1sbnM6dGlmZj0iaHR0cDovL25zLmFkb2JlLmNvbS90aWZmLzEuMC8iIGV4aWY6UGl4ZWxYRGltZW5zaW9uPSI0NTAiIGV4aWY6UGl4ZWxZRGltZW5zaW9uPSI0NDkiIHRpZmY6SW1hZ2VXaWR0aD0iNDUwIiB0aWZmOkltYWdlTGVuZ3RoPSI0NDkiIHRpZmY6T3JpZW50YXRpb249IjEiLz4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8P3hwYWNrZXQgZW5kPSJ3Ij8+/9sAQwADAgIDAgIDAwMDBAMDBAUIBQUE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"/>
+</defs>
+</svg>
+`,
   upload: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
   search: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
   sidebar: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`,
   close: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
   arrowUp: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
   arrowDown: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
-  info: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
   book: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"/></svg>`,
   gear: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
 };
 
-// Render base application layout
+// ─── Layout ───────────────────────────────────────────────────────────────────
+
 const appEl = document.querySelector<HTMLDivElement>("#app")!;
 appEl.innerHTML = `
   <div class="app-container">
     <div class="scroll-progress-container">
       <div id="scroll-progress" class="scroll-progress-bar"></div>
     </div>
-    
+
     <header class="app-header">
       <div class="logo-section">
-        <div class="logo-icon">${icons.logo}</div>
+        <button id="btn-home" class="logo-icon" title="Back to home">
+          ${icons.logo}
+        </button>
         <span class="logo-text">Anágnosi</span>
         <span class="logo-badge">Web</span>
       </div>
-      <div id="document-title-header" class="file-info-name" style="max-width: 40%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-weight: 500;">
+      <div id="document-title-header" class="file-info-name"
+           style="max-width:40%;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;font-weight:500;">
         No document open
       </div>
-      
       <div class="header-actions">
         <button id="btn-search-toggle" class="btn btn-icon" title="Search inside document" disabled>
           ${icons.search}
         </button>
-        <label class="btn btn-primary" for="docx-upload">
+        <label class="btn btn-primary" for="doc-upload">
           ${icons.upload}
           <span>Open File</span>
         </label>
-        <input id="docx-upload" type="file" accept=".docx" class="file-upload-input" />
+        <input id="doc-upload" type="file" accept="${FILE_INPUT_ACCEPT}" class="file-upload-input" />
       </div>
     </header>
-    
-    <!-- Floating Search Widget -->
+
     <div id="search-widget" class="search-widget">
-      <input id="search-input" type="text" placeholder="Find text..." class="search-input" />
+      <input id="search-input" type="text" placeholder="Find text…" class="search-input" />
       <span id="search-count" class="search-count">0 of 0</span>
       <div class="search-actions">
-        <button id="search-prev" class="search-btn" title="Previous match">${icons.arrowUp}</button>
-        <button id="search-next" class="search-btn" title="Next match">${icons.arrowDown}</button>
-        <button id="search-close" class="search-btn" title="Close search">${icons.close}</button>
+        <button id="search-prev"  class="search-btn" title="Previous">${icons.arrowUp}</button>
+        <button id="search-next"  class="search-btn" title="Next">${icons.arrowDown}</button>
+        <button id="search-close" class="search-btn" title="Close">${icons.close}</button>
       </div>
     </div>
 
     <div class="app-body">
-      <!-- Sidebar -->
       <aside id="app-sidebar" class="app-sidebar ${state.sidebarOpen ? "" : "collapsed"}">
         <div class="sidebar-tab-header">
-          <button id="tab-outline" class="sidebar-tab-btn active">Document Outline</button>
-          <button id="tab-settings" class="sidebar-tab-btn">Reader Settings</button>
+          <button id="tab-outline"   class="sidebar-tab-btn active">Document Outline</button>
+          <button id="tab-settings"  class="sidebar-tab-btn">Reader Settings</button>
         </div>
-        
         <div class="sidebar-tab-content">
-          <!-- Outline tab contents -->
           <div id="tab-content-outline" class="sidebar-section">
             <div class="sidebar-section-title">Outline</div>
             <div id="toc-container" class="toc-container">
               <div class="toc-empty">No outline available. Load a document to generate the outline.</div>
             </div>
-            
-            <div class="sidebar-section-title" style="margin-top: 1rem;">Document Stats</div>
+            <div class="sidebar-section-title" style="margin-top:1rem;">Document Stats</div>
             <div class="file-info-card">
-              <div id="stat-filename" class="file-info-name" style="font-size: 0.85rem; margin-bottom: 0.25rem;">-</div>
-              <div class="file-info-meta-row">
-                <span>File Size</span>
-                <span id="stat-filesize">-</span>
-              </div>
-              <div class="file-info-meta-row">
-                <span>Word Count</span>
-                <span id="stat-words">-</span>
-              </div>
-              <div class="file-info-meta-row">
-                <span>Est. Read Time</span>
-                <span id="stat-readtime">-</span>
-              </div>
+              <div id="stat-filename"  class="file-info-name"  style="font-size:.85rem;margin-bottom:.25rem;">-</div>
+              <div class="file-info-meta-row"><span>File Size</span>  <span id="stat-filesize">-</span></div>
+              <div class="file-info-meta-row"><span>Word Count</span> <span id="stat-words">-</span></div>
+              <div class="file-info-meta-row"><span>Est. Read Time</span><span id="stat-readtime">-</span></div>
             </div>
           </div>
-          
-          <!-- Settings tab contents -->
-          <div id="tab-content-settings" class="sidebar-section" style="display: none;">
-            <!-- Theme select -->
+          <div id="tab-content-settings" class="sidebar-section" style="display:none;">
             <div class="sidebar-section">
               <span class="control-grid-label">Theme Mode</span>
               <div class="theme-selector-grid">
                 <div class="theme-option theme-opt-light" data-theme="light">Light</div>
                 <div class="theme-option theme-opt-sepia" data-theme="sepia">Sepia</div>
-                <div class="theme-option theme-opt-dark" data-theme="dark">Dark</div>
-                <div class="theme-option theme-opt-oled" data-theme="oled">OLED</div>
+                <div class="theme-option theme-opt-dark"  data-theme="dark">Dark</div>
+                <div class="theme-option theme-opt-oled"  data-theme="oled">OLED</div>
               </div>
             </div>
-            
-            <!-- Font family selection -->
             <div class="sidebar-section">
               <span class="control-grid-label">Typography Style</span>
               <div class="btn-group">
@@ -148,8 +117,6 @@ appEl.innerHTML = `
                 <button class="btn-group-option" data-font="font-mono">Mono</button>
               </div>
             </div>
-            
-            <!-- Font size slider -->
             <div class="sidebar-section">
               <span class="control-grid-label">Text Size</span>
               <div class="font-size-slider-container">
@@ -157,8 +124,6 @@ appEl.innerHTML = `
                 <span id="label-fontsize" class="font-size-preview">${state.fontSize}px</span>
               </div>
             </div>
-
-            <!-- Line spacing selection -->
             <div class="sidebar-section">
               <span class="control-grid-label">Line Spacing</span>
               <div class="btn-group">
@@ -167,8 +132,6 @@ appEl.innerHTML = `
                 <button class="btn-group-option" data-spacing="1.9">Relaxed</button>
               </div>
             </div>
-            
-            <!-- Page margins/width -->
             <div class="sidebar-section">
               <span class="control-grid-label">Page Width</span>
               <div class="btn-group">
@@ -177,58 +140,48 @@ appEl.innerHTML = `
                 <button class="btn-group-option" data-width="width-wide">Wide</button>
               </div>
             </div>
-
-            <!-- Export options -->
-            <div class="sidebar-section" style="margin-top: 1rem;">
-              <button id="btn-export-html" class="btn" style="width: 100%;" disabled>
-                Export Parse HTML
+            <div class="sidebar-section" style="margin-top:1rem;">
+              <button id="btn-export-html" class="btn" style="width:100%;" disabled>
+                Export Parsed HTML
               </button>
             </div>
           </div>
         </div>
         <button id="btn-sidebar-toggle" class="btn btn-icon btn-sidebar-toggle-chatgpt" title="Toggle Sidebar">
-            ${icons.sidebar}
+          ${icons.sidebar}
         </button>
-        </aside>
-        <!-- Canvas / Reading Space -->
-        <main id="app-canvas" class="app-canvas">
-        
-        <!-- Landing / Empty Screen -->
-        <div id="landing-view" class="landing-view">
-          <h1 class="landing-title">Modern DocX Reader</h1>
-          <p class="landing-subtitle">
-            Upload your Word document (.docx) to view it inside a clean, distraction-free environment with customizable themes, typography controls, and full text search.
-          </p>
+      </aside>
 
-          <div id="local-file-notice" class="local-file-notice" style="display: none;" role="alert"></div>
-          
+      <main id="app-canvas" class="app-canvas">
+        <div id="landing-view" class="landing-view">
+          <h1 class="landing-title">Anágnosi Document Reader</h1>
+          <p class="landing-subtitle">
+            Open Word, Excel, PowerPoint, or RTF files directly in your browser —
+            no upload, no server, everything stays on your device.
+          </p>
+          <div id="local-file-notice" class="local-file-notice" style="display:none;" role="alert"></div>
           <div id="drop-zone" class="drop-zone">
-            <div class="drop-zone-icon">
-              ${icons.upload}
-            </div>
+            <div class="drop-zone-icon">${icons.upload}</div>
             <div class="drop-zone-text">
-              <span class="drop-zone-primary">Drag & drop your .docx file here</span>
-              <span class="drop-zone-secondary">or click the button in the header to browse</span>
+              <span class="drop-zone-primary">Drag &amp; drop a file here</span>
+              <span class="drop-zone-secondary">.docx &nbsp;·&nbsp; .xlsx &nbsp;·&nbsp; .pptx &nbsp;·&nbsp; .rtf</span>
             </div>
           </div>
-          
           <div class="landing-actions">
             <span class="or-divider">Or</span>
-            <button id="btn-load-sample" class="btn btn-primary">
+            <button id="btn-load-sample" class="btn">
               ${icons.book}
-              <span>Load Sample Document</span>
+              <span>Try a Sample Document</span>
             </button>
           </div>
         </div>
-        
-        <!-- Loading Spinner Container -->
-        <div id="loading-view" class="spinner-container" style="display: none;">
+
+        <div id="loading-view" class="spinner-container" style="display:none;">
           <div class="spinner"></div>
-          <span class="spinner-text">Parsing document structure...</span>
+          <span id="loading-text" class="spinner-text">Parsing document…</span>
         </div>
-        
-        <!-- Document Page -->
-        <article id="document-paper" class="document-paper" style="display: none;">
+
+        <article id="document-paper" class="document-paper" style="display:none;">
           <div id="document-content" class="document-content"></div>
         </article>
       </main>
@@ -236,762 +189,20 @@ appEl.innerHTML = `
   </div>
 `;
 
-// DOM Reference Cache
-const dom = {
-  body: document.body,
-  canvas: document.getElementById("app-canvas") as HTMLElement,
-  sidebar: document.getElementById("app-sidebar") as HTMLElement,
-  documentPaper: document.getElementById("document-paper") as HTMLElement,
-  documentContent: document.getElementById("document-content") as HTMLElement,
-  documentTitleHeader: document.getElementById("document-title-header") as HTMLElement,
-  landingView: document.getElementById("landing-view") as HTMLElement,
-  loadingView: document.getElementById("loading-view") as HTMLElement,
-  dropZone: document.getElementById("drop-zone") as HTMLElement,
-  localFileNotice: document.getElementById("local-file-notice") as HTMLElement,
-  tocContainer: document.getElementById("toc-container") as HTMLElement,
-  searchWidget: document.getElementById("search-widget") as HTMLElement,
-  searchInput: document.getElementById("search-input") as HTMLInputElement,
-  searchCount: document.getElementById("search-count") as HTMLElement,
-  searchNext: document.getElementById("search-next") as HTMLButtonElement,
-  searchPrev: document.getElementById("search-prev") as HTMLButtonElement,
-  searchClose: document.getElementById("search-close") as HTMLButtonElement,
+// ─── Init ─────────────────────────────────────────────────────────────────────
 
-  // Settings Controls
-  sliderFontsize: document.getElementById("slider-fontsize") as HTMLInputElement,
-  labelFontsize: document.getElementById("label-fontsize") as HTMLElement,
-
-  // Buttons
-  btnSidebarToggle: document.getElementById("btn-sidebar-toggle") as HTMLButtonElement,
-  btnSearchToggle: document.getElementById("btn-search-toggle") as HTMLButtonElement,
-  btnLoadSample: document.getElementById("btn-load-sample") as HTMLButtonElement,
-  btnExportHtml: document.getElementById("btn-export-html") as HTMLButtonElement,
-  fileInput: document.getElementById("docx-upload") as HTMLInputElement,
-
-  // Stats
-  statFileName: document.getElementById("stat-filename") as HTMLElement,
-  statFileSize: document.getElementById("stat-filesize") as HTMLElement,
-  statWords: document.getElementById("stat-words") as HTMLElement,
-  statReadTime: document.getElementById("stat-readtime") as HTMLElement,
-  scrollProgress: document.getElementById("scroll-progress") as HTMLElement,
-};
-
-// Theme Management Helper
-function setTheme(theme: AppState["theme"]) {
-  state.theme = theme;
-  localStorage.setItem("anagnosi-theme", theme);
-
-  // Remove existing themes from body and add active one
-  dom.body.className = dom.body.className
-    .split(" ")
-    .filter(c => !c.startsWith("theme-"))
-    .join(" ");
-  dom.body.classList.add(`theme-${theme}`);
-
-  // Update active state in grid buttons
-  document.querySelectorAll(".theme-option").forEach(opt => {
-    opt.classList.toggle("active", opt.getAttribute("data-theme") === theme);
-  });
-}
-
-// Font Family Helper
-function setFontFamily(font: AppState["fontFamily"]) {
-  state.fontFamily = font;
-  localStorage.setItem("anagnosi-font-family", font);
-
-  // Remove font classes from content
-  dom.documentContent.className = dom.documentContent.className
-    .split(" ")
-    .filter(c => !c.startsWith("font-"))
-    .join(" ");
-  dom.documentContent.classList.add(font);
-
-  // Update active class in layout selector buttons
-  document.querySelectorAll("[data-font]").forEach(btn => {
-    btn.classList.toggle("active", btn.getAttribute("data-font") === font);
-  });
-}
-
-// Page Width Helper
-function setPageWidth(width: AppState["pageWidth"]) {
-  state.pageWidth = width;
-  localStorage.setItem("anagnosi-page-width", width);
-
-  dom.documentPaper.className = dom.documentPaper.className
-    .split(" ")
-    .filter(c => !c.startsWith("width-"))
-    .join(" ");
-  dom.documentPaper.classList.add(width);
-
-  document.querySelectorAll("[data-width]").forEach(btn => {
-    btn.classList.toggle("active", btn.getAttribute("data-width") === width);
-  });
-}
-
-// Line Height Helper
-function setLineHeight(height: number) {
-  state.lineHeight = height;
-  localStorage.setItem("anagnosi-line-height", height.toString());
-  dom.documentContent.style.setProperty("--line-height", height.toString());
-
-  document.querySelectorAll("[data-spacing]").forEach(btn => {
-    const val = parseFloat(btn.getAttribute("data-spacing") || "1.6");
-    btn.classList.toggle("active", Math.abs(val - height) < 0.05);
-  });
-}
-
-// Font Size Helper
-function setFontSize(size: number) {
-  state.fontSize = size;
-  localStorage.setItem("anagnosi-font-size", size.toString());
-  dom.documentContent.style.setProperty("--font-size", `${size}px`);
-  dom.sliderFontsize.value = size.toString();
-  dom.labelFontsize.textContent = `${size}px`;
-}
-
-// Initialise theme and style controls from state on run
-function initSettingsUI() {
-  setTheme(state.theme);
-  setFontFamily(state.fontFamily);
-  setPageWidth(state.pageWidth);
-  setLineHeight(state.lineHeight);
-  setFontSize(state.fontSize);
-
-  // Update initial active tab UI
-  updateTabUI();
-}
-
-// Tab Switching
-function updateTabUI() {
-  const activeTab = state.activeTab;
-  document.getElementById("tab-outline")!.classList.toggle("active", activeTab === "outline");
-  document.getElementById("tab-settings")!.classList.toggle("active", activeTab === "settings");
-
-  document.getElementById("tab-content-outline")!.style.display = activeTab === "outline" ? "flex" : "none";
-  document.getElementById("tab-content-settings")!.style.display = activeTab === "settings" ? "flex" : "none";
-}
-
-// Helper to format file size readable
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-}
-
-// Calculate Document statistics
-function calculateStats() {
-  // Count words (strip tags first)
-  const text = dom.documentContent.textContent || "";
-  const words = text.trim().split(/\s+/).filter(w => w.length > 0);
-  state.wordCount = words.length;
-  state.readingTime = Math.max(1, Math.ceil(words.length / 225)); // 225 wpm read speed
-
-  dom.statWords.textContent = state.wordCount.toLocaleString();
-  dom.statReadTime.textContent = `${state.readingTime} min`;
-}
-
-// Generate Outline TOC
-function generateOutline() {
-  const headings = dom.documentContent.querySelectorAll("h1, h2, h3, h4");
-
-  if (headings.length === 0) {
-    dom.tocContainer.innerHTML = `<div class="toc-empty">No headings found in this document.</div>`;
-    return;
-  }
-
-  const tocList = document.createElement("ul");
-  tocList.className = "toc-list";
-
-  headings.forEach((heading, index) => {
-    const el = heading as HTMLElement;
-    // Set a unique ID for anchor links if not present
-    if (!el.id) {
-      el.id = `h-anchor-${index}`;
-    }
-
-    const tagName = el.tagName.toLowerCase();
-    const item = document.createElement("li");
-    const link = document.createElement("a");
-    link.className = `toc-item toc-item-${tagName}`;
-    link.textContent = el.textContent || `Section ${index + 1}`;
-    link.setAttribute("data-target", el.id);
-
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      // Scroll to heading smoothly
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-
-      // Update active class on click
-      document.querySelectorAll(".toc-item").forEach(l => l.classList.remove("active"));
-      link.classList.add("active");
-    });
-
-    item.appendChild(link);
-    tocList.appendChild(item);
-  });
-
-  dom.tocContainer.innerHTML = "";
-  dom.tocContainer.appendChild(tocList);
-}
-
-// Scroll Handling: Update scroll progress bar and active TOC heading
-function handleScroll() {
-  const scrollElement = dom.canvas;
-  const scrollTop = scrollElement.scrollTop;
-  const scrollHeight = scrollElement.scrollHeight - scrollElement.clientHeight;
-
-  if (scrollHeight > 0) {
-    const percentage = (scrollTop / scrollHeight) * 100;
-    dom.scrollProgress.style.width = `${percentage}%`;
-  } else {
-    dom.scrollProgress.style.width = "0%";
-  }
-
-  // Outline active tracking
-  const headings = dom.documentContent.querySelectorAll("h1, h2, h3");
-  if (headings.length === 0) return;
-
-  let activeId = "";
-  const canvasTop = dom.canvas.getBoundingClientRect().top;
-
-  for (let i = 0; i < headings.length; i++) {
-    const heading = headings[i] as HTMLElement;
-    const rect = heading.getBoundingClientRect();
-
-    // Check if the heading has crossed a threshold near top of screen
-    if (rect.top - canvasTop <= 110) {
-      activeId = heading.id;
-    } else {
-      break;
-    }
-  }
-
-  if (!activeId && headings.length > 0) {
-    activeId = headings[0].id;
-  }
-
-  if (activeId) {
-    document.querySelectorAll(".toc-item").forEach(item => {
-      const isTarget = item.getAttribute("data-target") === activeId;
-      item.classList.toggle("active", isTarget);
-
-      // If setting active, scroll the TOC list so it stays visible
-      if (isTarget) {
-        const tocList = document.querySelector(".toc-list");
-        if (tocList) {
-          const itemRect = item.getBoundingClientRect();
-          const listRect = tocList.getBoundingClientRect();
-          if (itemRect.bottom > listRect.bottom || itemRect.top < listRect.top) {
-            item.scrollIntoView({ block: "nearest" });
-          }
-        }
-      }
-    });
-  }
-}
-
-function hideLocalFileNotice() {
-  dom.localFileNotice.style.display = "none";
-  dom.localFileNotice.innerHTML = "";
-  dom.dropZone.classList.remove("drop-zone--highlight");
-}
-
-type LocalFileFallbackReason = "firefox" | "chrome-denied" | "web";
-
-function showLocalFileFallback(options: {
-  fileName?: string;
-  reason: LocalFileFallbackReason;
-}) {
-  dom.loadingView.style.display = "none";
-  dom.documentPaper.style.display = "none";
-  dom.landingView.style.display = "flex";
-  dom.btnSearchToggle.disabled = true;
-  dom.btnExportHtml.disabled = true;
-  dom.documentTitleHeader.textContent = "No document open";
-
-  const label = options.fileName
-    ? `<strong>${escapeHtml(options.fileName)}</strong>`
-    : "your local .docx file";
-
-  const body =
-    options.reason === "firefox"
-      ? `<p>Firefox cannot open local files from disk automatically. Open ${label} using the drop zone below or the <strong>Open File</strong> button in the header.</p>`
-      : options.reason === "chrome-denied"
-        ? `<p>Could not read ${label} automatically. In Chrome, open <code>chrome://extensions</code>, open this extension&rsquo;s <strong>Details</strong>, and enable <strong>Allow access to file URLs</strong> — or use the drop zone below.</p>`
-        : `<p>Local files cannot be opened from a URL on the web. Open ${label} using the drop zone below or the <strong>Open File</strong> button in the header.</p>`;
-
-  dom.localFileNotice.innerHTML = `${body}<button type="button" class="btn btn-primary local-file-notice-btn" data-action="pick-file">Choose file&hellip;</button>`;
-  dom.localFileNotice.style.display = "block";
-  dom.dropZone.classList.add("drop-zone--highlight");
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-// Parse docx ArrayBuffer and load content
-async function loadDocx(arrayBuffer: ArrayBuffer, name: string, size: number) {
-  hideLocalFileNotice();
-
-  // Show spinner
-  dom.landingView.style.display = "none";
-  dom.documentPaper.style.display = "none";
-  dom.loadingView.style.display = "flex";
-
-  // Update stats state
-  state.fileName = name;
-  state.fileSize = formatBytes(size);
-  dom.statFileName.textContent = name;
-  dom.statFileSize.textContent = state.fileSize;
-  dom.documentTitleHeader.textContent = name;
-
-  try {
-    const result = await mammoth.convertToHtml({ arrayBuffer });
-
-    // Inject HTML into paper
-    dom.documentContent.innerHTML = result.value;
-
-    // Process content (statistics, outline, styles)
-    calculateStats();
-    generateOutline();
-
-    // Show document paper
-    dom.loadingView.style.display = "none";
-    dom.documentPaper.style.display = "block";
-    dom.btnSearchToggle.disabled = false;
-    dom.btnExportHtml.disabled = false;
-
-    // Reset search
-    closeSearch();
-
-    // Scroll to top
-    dom.canvas.scrollTop = 0;
-  } catch (error) {
-    console.error("Failed to parse docx:", error);
-    alert("Could not load the Word document. Please ensure it is a valid, uncorrupted .docx file.");
-
-    // Revert to landing
-    dom.loadingView.style.display = "none";
-    dom.landingView.style.display = "flex";
-    dom.btnSearchToggle.disabled = true;
-    dom.btnExportHtml.disabled = true;
-    dom.documentTitleHeader.textContent = "No document open";
-  }
-}
-
-// Fetch and load sample document
-async function loadSampleDoc() {
-  dom.landingView.style.display = "none";
-  dom.loadingView.style.display = "flex";
-
-  try {
-    const response = await fetch("/sample.docx");
-    if (!response.ok) {
-      throw new Error(`Server returned ${response.status}`);
-    }
-    const buffer = await response.arrayBuffer();
-    await loadDocx(buffer, "sample.docx", buffer.byteLength);
-  } catch (error) {
-    console.error("Failed to fetch sample.docx:", error);
-    // Show mock content as a failsafe so they immediately see it working even if URL fails
-    const mockBuffer = createMockDocxArrayBuffer();
-    await loadDocx(mockBuffer, "Welcome_Guide.docx", mockBuffer.byteLength);
-  }
-}
-
-// Failsafe Mock Word Document Array Buffer creation (Minimal empty docx structure)
-// This ensures that even if local file fetches are restricted, the reader works immediately.
-function createMockDocxArrayBuffer(): ArrayBuffer {
-  // A tiny valid blank zip / docx content or mock array buffer.
-  // Actually, we can generate a simple valid base64 docx file and convert to buffer.
-  // Below is a valid minimal base64 encoded docx file containing text "Anagnosi Document Reader Guide"
-  const base64Docx =
-    "UEsDBBQAAAAIAKV6a1YAAAAAAAAAAAAAAAAHAAAAX3JlbHMvLmVsZW1lbnRzWk9DSwNBEPyvEHvO" +
-    "7M5mFfFQEEQ8iBfEy2o2m0WzO7tG/Hu3h4IevHz9qqv6qrsDhz3nK1adBbe2g0vGq2s7bFfXH96B" +
-    "YwYF/wz2yLw9B3t6tFhF0FhE2qjM24tY29jZ04sVfIu1+22/2VwO3h6zCLaePexQxMB28PZs+Z8M" +
-    "9sB2x2aXwfYw2ENgD8F2Z7D75vB/0bTf9tsN1kPgvWwG7L/t1Z2q2u76/XvD/sNgW4Ntj8EesV1i" +
-    "O8WfH+wW8R+Ld5v+251+W1m3+3b/EewW22WwY/ztHvs/wXZg2w5sfwbbeWznsT0Fe/Z6Yg2xMuzJ" +
-    "2y2wZ7DnsGezVbDDxXz9n0H4kC+MwxWEYRiEYRiGYRiGYRiGYRiGYRiGYRiGYRiGYRiGYRiGYRiG" +
-    "YRiGYRiGYRiGYRiGYRiGYRiGYRiGYRiGYRiG+Yj5n/+Pwf4GUEsBAhQAFAAAAAgApXprVgAAAAAA" +
-    "AAAAAAAAAAcAAAAAAAAAAAAQAAAAAAAAAF9yZWxzLy5lbGVtZW50c1BLBQYAAAAAAQABADUAAAA8" +
-    "AAAAAA==";
-
-  // Since mammoth needs a proper docx XML zip structure, let's create a dynamic fallback
-  // using Mammoth directly if possible, or just download a valid small file.
-  // We downloaded sample.docx earlier using curl, which is perfect. If curl failed,
-  // we'll try to generate a mock array buffer. Let's make a mock block of bytes:
-  const binaryString = atob(base64Docx);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-// Drag & Drop event bindings
-function initDragAndDrop() {
-  ["dragenter", "dragover"].forEach(eventName => {
-    dom.dropZone.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dom.dropZone.classList.add("dragover");
-    }, false);
-  });
-
-  ["dragleave", "drop"].forEach(eventName => {
-    dom.dropZone.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dom.dropZone.classList.remove("dragover");
-    }, false);
-  });
-
-  dom.dropZone.addEventListener("drop", async (e) => {
-    const dt = e.dataTransfer;
-    const file = dt?.files[0];
-    if (file && file.name.endsWith(".docx")) {
-      const buffer = await file.arrayBuffer();
-      loadDocx(buffer, file.name, file.size);
-    } else {
-      alert("Please drop a valid Microsoft Word (.docx) file.");
-    }
-  });
-
-  dom.dropZone.addEventListener("click", () => {
-    dom.fileInput.click();
-  });
-}
-
-// Text Search functions
-function highlightSearch(container: HTMLElement, searchTerm: string): number {
-  removeHighlights(container);
-
-  if (!searchTerm || searchTerm.trim() === "") return 0;
-
-  let count = 0;
-  const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`(${escaped})`, "gi");
-
-  function walk(node: Node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.nodeValue || "";
-      if (regex.test(text)) {
-        const parent = node.parentNode;
-        if (parent && parent.nodeName !== "SCRIPT" && parent.nodeName !== "STYLE") {
-          const fragment = document.createDocumentFragment();
-          const parts = text.split(regex);
-
-          parts.forEach(part => {
-            if (regex.test(part)) {
-              const span = document.createElement("span");
-              span.className = "match-highlight";
-              span.textContent = part;
-              fragment.appendChild(span);
-              count++;
-            } else if (part) {
-              fragment.appendChild(document.createTextNode(part));
-            }
-          });
-
-          parent.replaceChild(fragment, node);
-        }
-      }
-    } else {
-      const children = Array.from(node.childNodes);
-      children.forEach(walk);
-    }
-  }
-
-  walk(container);
-  return count;
-}
-
-function removeHighlights(container: HTMLElement) {
-  const highlights = container.querySelectorAll(".match-highlight");
-  highlights.forEach(highlight => {
-    const parent = highlight.parentNode;
-    if (parent) {
-      parent.replaceChild(document.createTextNode(highlight.textContent || ""), highlight);
-      parent.normalize();
-    }
-  });
-}
-
-function triggerSearch() {
-  const query = dom.searchInput.value;
-  const contentEl = dom.documentContent;
-
-  const count = highlightSearch(contentEl, query);
-
-  if (count > 0) {
-    currentSearchIndex = 0;
-    searchMatches = Array.from(contentEl.querySelectorAll(".match-highlight")) as HTMLElement[];
-    searchMatches[currentSearchIndex].classList.add("active");
-    searchMatches[currentSearchIndex].scrollIntoView({ behavior: "smooth", block: "center" });
-    dom.searchCount.textContent = `1 of ${count}`;
-  } else {
-    currentSearchIndex = -1;
-    searchMatches = [];
-    dom.searchCount.textContent = `0 of 0`;
-  }
-}
-
-function navigateSearch(direction: "next" | "prev") {
-  if (searchMatches.length === 0) return;
-
-  searchMatches[currentSearchIndex].classList.remove("active");
-
-  if (direction === "next") {
-    currentSearchIndex = (currentSearchIndex + 1) % searchMatches.length;
-  } else {
-    currentSearchIndex = (currentSearchIndex - 1 + searchMatches.length) % searchMatches.length;
-  }
-
-  const activeMatch = searchMatches[currentSearchIndex];
-  activeMatch.classList.add("active");
-  activeMatch.scrollIntoView({ behavior: "smooth", block: "center" });
-  dom.searchCount.textContent = `${currentSearchIndex + 1} of ${searchMatches.length}`;
-}
-
-function toggleSearchWidget() {
-  if (dom.btnSearchToggle.disabled) return;
-
-  const isActive = dom.searchWidget.classList.toggle("active");
-  if (isActive) {
-    dom.searchInput.focus();
-    if (dom.searchInput.value) {
-      triggerSearch();
-    }
-  } else {
-    closeSearch();
-  }
-}
-
-function closeSearch() {
-  dom.searchWidget.classList.remove("active");
-  dom.searchInput.value = "";
-  removeHighlights(dom.documentContent);
-  searchMatches = [];
-  currentSearchIndex = -1;
-  dom.searchCount.textContent = "0 of 0";
-}
-
-// Event Bindings
-function bindEvents() {
-  dom.localFileNotice.addEventListener("click", (e) => {
-    const target = e.target as HTMLElement;
-    if (target.closest("[data-action='pick-file']")) {
-      dom.fileInput.click();
-    }
-  });
-
-  // File input change
-  dom.fileInput.addEventListener("change", async (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (file) {
-      const buffer = await file.arrayBuffer();
-      loadDocx(buffer, file.name, file.size);
-    }
-  });
-
-  // Drag and Drop
-  initDragAndDrop();
-
-  // Load Sample Button click
-  dom.btnLoadSample.addEventListener("click", loadSampleDoc);
-
-  // Sidebar toggle button
-  dom.btnSidebarToggle.addEventListener("click", () => {
-    state.sidebarOpen = !state.sidebarOpen;
-    localStorage.setItem("anagnosi-sidebar-open", state.sidebarOpen.toString());
-    dom.sidebar.classList.toggle("collapsed", !state.sidebarOpen);
-  });
-
-  // Sidebar Tab Switching
-  document.getElementById("tab-outline")!.addEventListener("click", () => {
-    state.activeTab = "outline";
-    updateTabUI();
-  });
-
-  document.getElementById("tab-settings")!.addEventListener("click", () => {
-    state.activeTab = "settings";
-    updateTabUI();
-  });
-
-  // Theme selection change
-  document.querySelectorAll(".theme-option").forEach(opt => {
-    opt.addEventListener("click", () => {
-      const t = opt.getAttribute("data-theme") as AppState["theme"];
-      if (t) setTheme(t);
-    });
-  });
-
-  // Font Family selectors
-  document.querySelectorAll("[data-font]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const f = btn.getAttribute("data-font") as AppState["fontFamily"];
-      if (f) setFontFamily(f);
-    });
-  });
-
-  // Page Width selectors
-  document.querySelectorAll("[data-width]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const w = btn.getAttribute("data-width") as AppState["pageWidth"];
-      if (w) setPageWidth(w);
-    });
-  });
-
-  // Line Spacing selectors
-  document.querySelectorAll("[data-spacing]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const s = parseFloat(btn.getAttribute("data-spacing") || "1.6");
-      setLineHeight(s);
-    });
-  });
-
-  // Font Size slider change
-  dom.sliderFontsize.addEventListener("input", () => {
-    const size = parseInt(dom.sliderFontsize.value);
-    setFontSize(size);
-  });
-
-  // Search actions
-  dom.btnSearchToggle.addEventListener("click", toggleSearchWidget);
-  dom.searchInput.addEventListener("input", triggerSearch);
-  dom.searchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      navigateSearch("next");
-    } else if (e.key === "Escape") {
-      closeSearch();
-    }
-  });
-
-  dom.searchNext.addEventListener("click", () => navigateSearch("next"));
-  dom.searchPrev.addEventListener("click", () => navigateSearch("prev"));
-  dom.searchClose.addEventListener("click", closeSearch);
-
-  // Global Shortcut for search (Ctrl+F or Cmd+F)
-  window.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-      e.preventDefault();
-      toggleSearchWidget();
-    }
-  });
-
-  // Scroll tracking on canvas
-  dom.canvas.addEventListener("scroll", handleScroll);
-
-  // Export parsed HTML
-  dom.btnExportHtml.addEventListener("click", () => {
-    if (dom.btnExportHtml.disabled) return;
-
-    // Clean highlights if any before export
-    const cleanContent = dom.documentContent.cloneNode(true) as HTMLElement;
-    removeHighlights(cleanContent);
-
-    const blob = new Blob([cleanContent.innerHTML], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${state.fileName.replace(/\.docx$/, "")}_parsed.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
-}
-
-// Auto-open file from URL query parameter if present
-async function loadFromQueryParam() {
-  const params = new URLSearchParams(window.location.search);
-
-  // Firefox redirect from background (no file:// fetch attempted)
-  if (params.get("local") === "1") {
-    const nameParam = params.get("name");
-    showLocalFileFallback({
-      fileName: nameParam ? decodeURIComponent(nameParam) : undefined,
-      reason: "firefox",
-    });
-    return;
-  }
-
-  const fileUrl = params.get("file");
-  if (!fileUrl) return;
-
-  const decodedUrl = decodeURIComponent(fileUrl);
-  const fileName = fileNameFromUrl(decodedUrl);
-
-  // Local files cannot be fetched from a normal web page; extension contexts differ by browser.
-  if (isFileUrl(decodedUrl)) {
-    if (!isExtensionContext()) {
-      showLocalFileFallback({ fileName, reason: "web" });
-      return;
-    }
-    if (isFirefox()) {
-      showLocalFileFallback({ fileName, reason: "firefox" });
-      return;
-    }
-  }
-
-  dom.landingView.style.display = "none";
-  dom.documentPaper.style.display = "none";
-  dom.loadingView.style.display = "flex";
-
-  dom.statFileName.textContent = fileName;
-  dom.documentTitleHeader.textContent = fileName;
-
-  try {
-    const response = await fetch(decodedUrl);
-    if (!response.ok) {
-      throw new Error(`Server returned status ${response.status}`);
-    }
-    const buffer = await response.arrayBuffer();
-    await loadDocx(buffer, fileName, buffer.byteLength);
-  } catch (error) {
-    console.error("Failed to fetch docx from URL:", error);
-
-    if (isFileUrl(decodedUrl)) {
-      showLocalFileFallback({
-        fileName,
-        reason: isExtensionContext()
-          ? isFirefox()
-            ? "firefox"
-            : "chrome-denied"
-          : "web",
-      });
-    } else {
-      alert("Could not load the document from the URL: " + decodedUrl);
-      dom.loadingView.style.display = "none";
-      dom.landingView.style.display = "flex";
-      dom.btnSearchToggle.disabled = true;
-      dom.btnExportHtml.disabled = true;
-      dom.documentTitleHeader.textContent = "No document open";
-    }
-  }
-}
-
-// Initialise application
 function init() {
-  initSettingsUI();
-  bindEvents();
+  const dom = buildDom();
+  initSettingsUI(dom, state);
+  bindEvents(dom, state);
 
   const params = new URLSearchParams(window.location.search);
   if (params.has("file") || params.get("local") === "1") {
-    loadFromQueryParam();
+    loadFromQueryParam(dom, state);
   } else {
-    // Auto-open sample document on page load immediately, as requested!
-    loadSampleDoc();
+    showLanding(dom, state);
   }
 }
 
-// Run app
 init();
 inject();

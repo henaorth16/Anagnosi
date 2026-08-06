@@ -5,44 +5,60 @@
 
 export function isExtensionContext(): boolean {
   const runtime =
-    (globalThis as { browser?: { runtime?: { id?: string } } }).browser?.runtime ??
-    (globalThis as { chrome?: { runtime?: { id?: string } } }).chrome?.runtime
+    (globalThis as { browser?: { runtime?: { id?: string } } }).browser
+      ?.runtime ??
+    (globalThis as { chrome?: { runtime?: { id?: string } } }).chrome?.runtime;
 
-  return Boolean(runtime?.id)
+  return Boolean(runtime?.id);
 }
 
 /** True when running in Mozilla Firefox (extension or plain web). */
 export function isFirefox(): boolean {
   const runtime =
-    (globalThis as { browser?: { runtime?: { getBrowserInfo?: () => unknown } } }).browser
-      ?.runtime ??
-    (globalThis as { chrome?: { runtime?: { getBrowserInfo?: () => unknown } } }).chrome?.runtime
+    (
+      globalThis as {
+        browser?: { runtime?: { getBrowserInfo?: () => unknown } };
+      }
+    ).browser?.runtime ??
+    (
+      globalThis as {
+        chrome?: { runtime?: { getBrowserInfo?: () => unknown } };
+      }
+    ).chrome?.runtime;
 
-  if (runtime && typeof runtime.getBrowserInfo === 'function') {
-    return true
+  if (runtime && typeof runtime.getBrowserInfo === "function") {
+    return true;
   }
 
   return (
-    typeof navigator !== 'undefined' &&
-    navigator.userAgent.includes('Firefox') &&
-    !navigator.userAgent.includes('Seamonkey')
-  )
+    typeof navigator !== "undefined" &&
+    navigator.userAgent.includes("Firefox") &&
+    !navigator.userAgent.includes("Seamonkey")
+  );
 }
 
 export function isFileUrl(url: string): boolean {
-  return url.startsWith('file://')
+  return url.startsWith("file://");
 }
 
-/** Extract a .docx filename from a file:// or http(s) URL path. */
-export function fileNameFromUrl(url: string, fallback = 'document.docx'): string {
+/** Extract a supported document filename from a file:// or http(s) URL path. */
+export function fileNameFromUrl(url: string, fallback = "document"): string {
   try {
-    const urlObj = new URL(url)
-    const lastPart = urlObj.pathname.split('/').filter(Boolean).pop()
-    if (lastPart?.toLowerCase().endsWith('.docx')) {
-      return decodeURIComponent(lastPart)
+    const urlObj = new URL(url);
+    const lastPart = urlObj.pathname.split("/").filter(Boolean).pop();
+    if (lastPart) {
+      const lower = lastPart.toLowerCase();
+      if (
+        lower.endsWith(".docx") ||
+        lower.endsWith(".xlsx") ||
+        lower.endsWith(".pptx") ||
+        lower.endsWith(".rtf")
+      ) {
+        return decodeURIComponent(lastPart);
+      }
     }
   } catch {
     // Malformed URL — use fallback
   }
-  return fallback
+  return fallback;
 }
