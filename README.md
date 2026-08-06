@@ -1,94 +1,159 @@
-# Anágnosi – Premium DocX Reader & Browser Extension
+# Anágnosi – Document Reader
 
-**Anágnosi** (ανάγνωση – Greek for *reading*) is a premium, lightweight, distraction-free Microsoft Word (.docx) document viewer built to run seamlessly on the web and as a browser extension. It renders documents directly in your browser with gorgeous customizable themes, advanced typography controls, interactive full-text search, and automated local file interception.
-
----
-
-## ✨ Features
-- 🚀 **Auto-Sniffing & Redirection:** Automatically intercepts navigations to any `.docx` file (either a web link or local file) and opens it instantly within Anágnosi.
-- 🎨 **Beautiful Reading Themes:** Toggle between Light, Sepia, Dark, and high-contrast OLED black modes.
-- ✍️ **Advanced Typography Controls:** Instantly customize serif/sans/mono font families, precise text sizing (14px–26px), line heights, and margins to fit your reading style.
-- 📂 **Flexible Drag & Drop:** Drag any `.docx` file from your desktop and drop it directly onto the page to load it instantly.
-- 📑 **Interactive Document Outline:** Automatically extracts document headers to build a scroll-linked table of contents (TOC) for fast section navigation.
-- 🔍 **Full-Text Highlight Search:** Robust real-time search with visual highlights, match counters, and quick navigation keys (`Ctrl+F` / `Cmd+F` and `Enter`).
-- 📊 **Reading Analytics:** Dynamic word count tracking and estimated reading time.
-- 💾 **HTML Export:** Export beautifully structured HTML renders directly to your local drive.
+A browser extension and web app that lets you open and read **Word, Excel, PowerPoint, and RTF files** directly inside your browser — no upload, no server, no third-party service. Everything is parsed and rendered locally on your device.
 
 ---
 
-## 🛠️ Build Instructions
-Before loading the extension, compile the TypeScript source files and pack the web application.
+## Supported Formats
 
-### Prerequisites
-Make sure you have [Node.js](https://nodejs.org/) installed.
+| Format               | Extension | Notes                                                                                        |
+| -------------------- | --------- | -------------------------------------------------------------------------------------------- |
+| Microsoft Word       | `.docx`   | Full text, headings, tables, images via [Mammoth](https://github.com/mwilliamson/mammoth.js) |
+| Microsoft Excel      | `.xlsx`   | All worksheets rendered as scrollable tables via [SheetJS](https://sheetjs.com/)             |
+| Microsoft PowerPoint | `.pptx`   | Each slide rendered as a card — titles, body text, speaker notes                             |
+| Rich Text Format     | `.rtf`    | Bold, italic, underline, paragraphs, tables, hyperlinks, Unicode                             |
 
-### Steps
-1. Navigate to the project root directory in your terminal.
-2. Install the project dependencies:
+---
+
+## Features
+
+- **Drag & drop or click to open** any supported file from your file system or a URL
+- **Auto-intercept navigation** — clicking a document link in your browser opens it in the reader instead of downloading
+- **Zero upload** — all parsing runs in your browser; your files never leave your device
+- **Lazy-loaded parsers** — each format's library is only downloaded when you actually open a file of that type, keeping the initial load fast
+- **Document outline** — headings are extracted and shown as a clickable TOC in the sidebar
+- **Full-text search** — Ctrl/Cmd+F opens an in-page search with previous/next navigation
+- **Reading stats** — word count and estimated reading time shown per document
+- **Four themes** — Light, Sepia, Dark, OLED
+- **Typography controls** — serif / sans / mono fonts, font size slider, line spacing, page width
+- **Export parsed HTML** — download the rendered content as a standalone `.html` file
+
+---
+
+## Browser Support
+
+| Browser               | Extension | Web app |
+| --------------------- | --------- | ------- |
+| Chrome / Edge / Brave | ✅        | ✅      |
+| Firefox               | ✅        | ✅      |
+
+Local file interception (opening `file://` paths) requires enabling **Allow access to file URLs** in Chrome's extension settings. Firefox shows a prompt to pick the file manually when navigating to a local file.
+
+---
+
+## Installation (Extension)
+
+### Chrome / Edge / Brave
+
+1. Build the Chrome extension:
    ```bash
    npm install
+   npm run build:chrome
    ```
-3. Compile and build the extension package:
+2. Open `chrome://extensions`, enable **Developer mode**.
+3. Click **Load unpacked** and select the `dist/chrome` folder.
+4. To open local `.docx` / `.xlsx` / `.pptx` / `.rtf` files from disk, go to the extension's **Details** and enable **Allow access to file URLs**.
+
+### Firefox
+
+1. Build the Firefox extension:
    ```bash
-   npm run build
+   npm install
+   npm run build:firefox
    ```
-   *This produces two browser-specific bundles:*
-   - **`dist/chrome/`** — Chrome / Chromium (MV3 `service_worker` background)
-   - **`dist/firefox/`** — Firefox (MV3 `scripts` background)
+2. Open `about:debugging#/runtime/this-firefox`.
+3. Click **Load Temporary Add-on** and select any file inside `dist/firefox`.
 
-   Build a single target with `npm run build:chrome` or `npm run build:firefox`.
+---
 
-### Web app (Vercel)
-Deploy only the web reader — not the browser extension bundles:
+## Usage
+
+### Opening a file
+
+**From the extension toolbar icon** — click the Anágnosi icon in your browser toolbar to open the reader in a new tab, then drag a file onto the drop zone or click **Open File**.
+
+**Via URL interception** — navigate to any `.docx`, `.xlsx`, `.pptx`, or `.rtf` URL (including `file://` paths) and the extension will redirect the tab to the reader automatically.
+
+**Web app (no extension)** — visit the deployed Vercel URL and drag or pick a file. Local file interception is not available without the extension.
+
+### Searching
+
+- Press **Ctrl+F** (Windows/Linux) or **Cmd+F** (macOS) to open the search bar.
+- Type to highlight all matches; use the arrow buttons or Enter / Shift+Enter to navigate between them.
+- Press **Esc** to close search.
+
+### Sidebar
+
+The sidebar has two tabs:
+
+- **Document Outline** — click any heading to jump to that section; shows live word count and estimated reading time.
+- **Reader Settings** — change theme, font family, font size, line spacing, and page width. All preferences are saved to `localStorage`.
+
+### Exporting
+
+Click **Export Parsed HTML** in the Settings tab to download the rendered document content as a self-contained `.html` file.
+
+---
+
+## Development
 
 ```bash
+# Install dependencies (includes xlsx, mammoth, jszip, webextension-polyfill)
+npm install
+
+# Start Vite dev server (web app only)
+npm run dev
+
+# Build Chrome extension  →  dist/chrome/
+npm run build:chrome
+
+# Build Firefox extension →  dist/firefox/
+npm run build:firefox
+
+# Build web app (Vercel)  →  dist/
 npm run build:web
 ```
 
-This outputs a standard Vite SPA to **`dist/`**. Vercel uses `vercel.json` to run this command automatically and serve `index.html` for client-side routes.
+### Project Structure
 
----
-
-## 📥 How to Install & Load the Extension
-
-### 🌐 Google Chrome (and Chromium-based browsers)
-1. Open Google Chrome.
-2. Navigate to the extensions manager by typing **`chrome://extensions/`** in the URL bar.
-3. Turn on the **Developer mode** toggle in the top-right corner.
-4. Click the **Load unpacked** button in the top-left corner.
-5. Select the **`dist/chrome/`** folder inside this project's root directory.
-6. The extension is now loaded! Pin **Anágnosi** to your extension bar and click it to open the reader.
-
-#### 📂 Allowing Local `.docx` File Sniffing
-To let Anágnosi capture local `.docx` files when you drag them into Chrome or double-click them:
-1. On the `chrome://extensions/` page, click **Details** under the Anágnosi extension card.
-2. Scroll down to find the **Allow access to file URLs** setting.
-3. Toggle it **ON**.
-4. Now, any local `.docx` file opened in Chrome will automatically open in Anágnosi!
-
----
-
-### 🦊 Mozilla Firefox
-
-1. Open Firefox.
-2. In the URL bar, go to **`about:debugging#/runtime/this-firefox`**.
-3. Click the **Load Temporary Add-on...** button.
-4. Open the **`dist/firefox/`** folder of this project and select the **`manifest.json`** file.
-5. anagnosi will load immediately! You can access it by clicking the extension icon in the toolbar.
-
-#### 📂 Opening Local `.docx` Files
-Firefox does not offer Chrome’s “Allow access to file URLs” option. When you open a local `.docx` from the filesystem, Anágnosi redirects to the reader and prompts you to **drag and drop** the file or use **Open File** / **Choose file…** on the landing screen.
-
----
-
-## 💻 Local Development Setup
-To run the project locally with hot reloading (HMR) for fast UI testing:
-```bash
-npm run dev
 ```
-Vite and CRXJS will watch your files and compile them live. Use `npm run dev:chrome` or `npm run dev:firefox` for a browser-specific dev build (`dist/chrome/` or `dist/firefox/`).
+src/
+├── background/
+│   └── background.ts      # Service worker: intercepts .docx/.xlsx/.pptx/.rtf navigation
+├── parsers/
+│   ├── index.ts           # Dispatcher — dynamic import per format
+│   ├── parseDocx.ts       # .docx  via mammoth  (lazy)
+│   ├── parseXlsx.ts       # .xlsx  via SheetJS  (lazy)
+│   ├── parsePptx.ts       # .pptx  via JSZip XML extraction  (lazy)
+│   └── parseRtf.ts        # .rtf   pure-JS tokeniser  (lazy)
+├── shared/
+│   ├── browser.ts         # Extension / browser detection helpers
+│   ├── constants.ts       # App name, storage keys, defaults
+│   ├── fileTypes.ts       # Format registry, extension detection, MIME types
+│   └── types.ts           # Shared TypeScript interfaces
+├── main.ts                # App entry — UI, state, event bindings
+└── style.css              # Themes, layout, format-specific styles
+```
+
+### Adding a new format
+
+1. Add the extension to `SUPPORTED_EXTENSIONS` and `FORMAT_MAP` in `src/shared/fileTypes.ts`.
+2. Create `src/parsers/parseXxx.ts` exporting `async function parseXxx(buf: ArrayBuffer): Promise<ParseResult>`.
+3. Add a `case 'xxx'` to the switch in `src/parsers/index.ts`.
+4. Update `host_permissions` in both manifest files.
+5. Done — no other files need to change.
 
 ---
 
-## 🏛️ License
-Built with ❤️ under standard personal licensing terms. Enjoy a beautiful reading experience!
+## Performance notes
+
+- Each parser module is a **separate dynamic import** (`import()`), so the initial bundle only contains the app shell and the UI code. Mammoth, SheetJS, and JSZip are fetched from the module cache the first time a file of that type is opened.
+- The PPTX parser uses **JSZip** (already a transitive dependency of Mammoth) — no additional install required.
+- The RTF parser is **zero-dependency** — a pure-JS tokeniser included directly in the source.
+- SheetJS `sheet_to_html` is used instead of `sheet_to_json` to avoid re-building table markup manually, keeping render time proportional to the sheet size.
+
+---
+
+## License
+
+MIT
