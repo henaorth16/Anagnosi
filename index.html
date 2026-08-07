@@ -3,16 +3,124 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A premium, lightweight DocX reader and viewer for the web and browser extensions. Read Word documents with custom themes, search, and typography controls." />
-    <title>Anágnosi - Premium DocX Reader</title>
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">  </head>
+
+    <!-- ── Primary SEO ─────────────────────────────────────────────────── -->
+    <title>
+      Anágnosi – Free Online Document Reader | DOCX, XLSX, PPTX, RTF
+    </title>
+    <meta
+      name="description"
+      content="Anágnosi is a free, privacy-first document reader that opens Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and RTF files directly in your browser. No upload, no server, everything stays on your device."
+    />
+    <meta
+      name="keywords"
+      content="docx reader, word document viewer, xlsx viewer, pptx viewer, rtf reader, online document viewer, privacy document reader, browser document viewer, no upload file reader"
+    />
+    <meta name="author" content="Anágnosi" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://anagnosi.vercel.app/" />
+
+    <!-- ── Open Graph (Facebook, LinkedIn, etc.) ────────────────────────── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://anagnosi.vercel.app/" />
+    <meta
+      property="og:title"
+      content="Anágnosi – Free Online Document Reader"
+    />
+    <meta
+      property="og:description"
+      content="Open Word, Excel, PowerPoint, and RTF files instantly in your browser. No upload, no server, 100% private."
+    />
+    <meta property="og:image" content="/public/icons/icon128.png" />
+    <meta property="og:image:width" content="128" />
+    <meta property="og:image:height" content="128" />
+    <meta property="og:image:alt" content="Anágnosi document reader logo" />
+    <meta property="og:site_name" content="Anágnosi" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- ── Twitter Card ─────────────────────────────────────────────────── -->
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="Anágnosi – Free Online Document Reader"
+    />
+    <meta
+      name="twitter:description"
+      content="Open Word, Excel, PowerPoint, and RTF files instantly in your browser. No upload, no server, 100% private."
+    />
+    <meta name="twitter:image" content="/public/icons/icon128.png" />
+    <meta name="twitter:image:alt" content="Anágnosi document reader logo" />
+
+    <!-- ── Favicons & App Icons ─────────────────────────────────────────── -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="128x128"
+      href="/public/icons/icon128.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="48x48"
+      href="/public/icons/icon48.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/public/icons/icon32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/public/icons/icon16.png"
+    />
+    <link rel="apple-touch-icon" href="/public/icons/icon128.png" />
+
+    <!-- ── Theme Color ──────────────────────────────────────────────────── -->
+    <meta name="theme-color" content="#4f46e5" />
+
+    <!-- ── Fonts ────────────────────────────────────────────────────────── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- ── Structured Data (JSON-LD) ────────────────────────────────────── -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Anágnosi",
+        "url": "https://anagnosi.vercel.app/",
+        "description": "A free, privacy-first document reader that opens Word, Excel, PowerPoint, and RTF files directly in your browser — no upload, no server.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "image": "/public/icons/icon128.png",
+        "featureList": [
+          "Open DOCX, XLSX, PPTX, RTF files",
+          "No file upload required",
+          "100% private — files stay on your device",
+          "Custom themes: Light, Sepia, Dark, OLED",
+          "Full-text search",
+          "Table of contents / document outline",
+          "Typography and layout controls",
+          "Browser extension support"
+        ]
+      }
+    </script>
+  </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
-
